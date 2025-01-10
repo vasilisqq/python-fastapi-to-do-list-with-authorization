@@ -1,8 +1,8 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Response
 from users.schemas import SUser
 from users.DAO import UsersDAO
 from fastapi import HTTPException, status
-from users.auth import get_password_hash
+from users.auth import get_password_hash, auth_user, create_access_token
 
 router = APIRouter(
     prefix="/auth",
@@ -10,9 +10,23 @@ router = APIRouter(
 )
 
 @router.post("/register")
-async def register_user(data: SUser):
+async def register_user(response: Response, data: SUser):
     if await UsersDAO.find_existing(data.name):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="user with this username already exist")
     hashed_password = get_password_hash(data.password)
-    await UsersDAO.insert_user(data.name, hashed_password)
+    id = await UsersDAO.insert_user(data.name, hashed_password)
+    access_token = create_access_token({"sub":id})
+    response.set_cookie("todo_ac", access_token)
 
+@router.post("/login")
+async def login(response: Response, data: SUser):
+    user = await auth_user(data.name, data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED
+        )
+    access_token = create_access_token({"sub":user.id})
+    response.set_cookie("todo_ac",
+                        access_token,
+                        httponly=True
+                        )

@@ -15,6 +15,6 @@ class UsersDAO():
             query = insert(Users).values(
                 name=name,
                 hashed_password=hashed_password
-                )
+                ).returning(Users.id)
             await session.execute(query)
             await session.commit()
