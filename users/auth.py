@@ -1,10 +1,10 @@
 from datetime import datetime, timedelta, timezone
-from fastapi import HTTPException, status
 from passlib.context import CryptContext
 from users.DAO import UsersDAO
 from users.schemas import SUser
-from jose import jwt
+from jose import JWTError, jwt
 from config import settings
+from fastapi import Depends, HTTPException, Request, status
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -23,8 +23,34 @@ async def auth_user(username: str, password:str) -> None|SUser:
 def create_access_token(data:dict):
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(minutes=15)
-    to_encode.update({"exp": expire})
+    to_encode.update({"exp": expire, "iat": datetime.now(timezone.utc),"type": "access"})
     encoded_jwt = jwt.encode(to_encode,
                              settings.SECRET_KEY.get_secret_value(), 
                              algorithm=settings.ALGORITHM.get_secret_value())
     return encoded_jwt
+
+
+def get_token(request:Request):
+    token = request.cookies.get('todo_at')
+    if not token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Token not found')
+    return token
+
+async def get_current_user(token: str = Depends(get_token)):
+    try:
+        payload = jwt.decode(token=token, 
+                                key=settings.SECRET_KEY.get_secret_value(), 
+                                algorithms=[settings.ALGORITHM.get_secret_value()])
+    except JWTError as e:
+        print(e)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Токен не валидный!')
+
+    expire = payload.get('exp')
+    expire_time = datetime.fromtimestamp(int(expire), tz=timezone.utc)
+    if (not expire) or (expire_time < datetime.now(timezone.utc)):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Токен истек')
+
+    user_id = payload.get('sub')
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Не найден ID пользователя')
+    return user_id
