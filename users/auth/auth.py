@@ -40,48 +40,44 @@ def create_refresh_token(data:dict):
     return encoded_jwt
 
 
-def check_expire_token(token:str):
-    try:
-        payload = jwt.decode(token=token, 
-                                key=settings.SECRET_KEY.get_secret_value(), 
-                                algorithms=[settings.ALGORITHM.get_secret_value()])
-    except JWTError as e:
-        print(e)
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='token is not valid')
-    expire = payload.get('exp')
-    expire_time = datetime.fromtimestamp(int(expire), tz=timezone.utc)
-    return (not expire) or (expire_time < datetime.now(timezone.utc))
-
 def validate_tokens(request:Request, response: Response):
     access = request.cookies.get("todo_at")
-    if not access:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="access token not found")
-    if check_expire_token(access):
+    try:
+        payload = jwt.decode(token=access, 
+                                key=settings.SECRET_KEY.get_secret_value(), 
+                                algorithms=[settings.ALGORITHM.get_secret_value()])
+        user =  payload["sub"]     
+        if not user:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="user is invalid")
+        return user
+    except JWTError as e:
         refresh = request.cookies.get("todo_rt")
         if not refresh:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="refresh token does not exist")
-        if check_expire_token(access):
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="refresh timeless")
-        payload = jwt.decode(token=refresh, 
+        try:
+            payload = jwt.decode(token=refresh, 
                                 key=settings.SECRET_KEY.get_secret_value(), 
                                 algorithms=[settings.ALGORITHM.get_secret_value()])
-        access_token = create_access_token({"sub":payload["sub"]})
-        refresh_token = create_refresh_token({"sub":payload["sub"]})
-        response.set_cookie("todo_at",
-                        access_token,
-                        httponly=True
-                        )
-        response.set_cookie("todo_rt",
-                        refresh_token,
-                        httponly=True
-                        )
-    payload = jwt.decode(token=access, 
-                                key=settings.SECRET_KEY.get_secret_value(), 
-                                algorithms=[settings.ALGORITHM.get_secret_value()])
-    user =  payload["sub"]     
-    if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="user is invalid")
-    return user
+            access_token = create_access_token({"sub":payload["sub"]})
+            refresh_token = create_refresh_token({"sub":payload["sub"]})
+            response.set_cookie("todo_at",
+                            access_token,
+                            httponly=True
+                            )
+            response.set_cookie("todo_rt",
+                            refresh_token,
+                            httponly=True
+                            )
+            user =  payload["sub"]     
+            if not user:
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="user is invalid")
+            return user
+        except JWTError as e:
+            print(e)
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="authirze again")
+    
+        
+    
         
 
 async def get_all_tasks(user_id: str = Depends(validate_tokens)):
