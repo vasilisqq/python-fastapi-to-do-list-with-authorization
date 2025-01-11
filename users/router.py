@@ -1,8 +1,12 @@
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Request, Response
 from users.schemas import SUser
 from users.DAO import UsersDAO
 from fastapi import HTTPException, status
-from users.auth import get_password_hash, auth_user, create_access_token, get_current_user
+from users.auth import get_password_hash, auth_user, create_access_token, get_all_tasks, create_refresh_token
+from jose import jwt
+from config import settings
+from tasks.schemas import STask
+
 
 router = APIRouter(
     prefix="/auth",
@@ -26,16 +30,22 @@ async def login(response: Response, data: SUser):
             status_code=status.HTTP_401_UNAUTHORIZED
         )
     access_token = create_access_token({"sub":str(user.id)})
+    refresh_token = create_refresh_token({"sub":str(user.id)})
     response.set_cookie("todo_at",
                         access_token,
                         httponly=True
                         )
+    response.set_cookie("todo_rt",
+                        refresh_token,
+                        httponly=True
+                        )
 
 @router.get("/me/")
-async def get_me(user_data: str = Depends(get_current_user)):
-    return user_data
+async def get_me(tasks: list[STask] = Depends(get_all_tasks)):
+    return tasks
 
 @router.post("/logout/")
 async def logout_user(response: Response):
     response.delete_cookie(key="todo_at")
     return {'message': 'Пользователь успешно вышел из системы'}
+
