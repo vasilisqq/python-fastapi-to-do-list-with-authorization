@@ -7,4 +7,4 @@ class Tasks(Base):
     user_id = Column(ForeignKey("users.id"))
     title = Column(String, nullable=False)
     description = Column(String, nullable=True)
-    completed = Column(Boolean, default="n")
+    completed = Column(Boolean, default=False)

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 class STask(BaseModel):
     id: int
@@ -6,5 +6,4 @@ class STask(BaseModel):
     title: str
     description : str|None = None
     completed: bool
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

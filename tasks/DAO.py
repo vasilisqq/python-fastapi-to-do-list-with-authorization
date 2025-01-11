@@ -1,6 +1,7 @@
 from database import async_session_maker
-from sqlalchemy import select
+from sqlalchemy import select, insert
 from tasks.model import Tasks
+from tasks.schemas import STask
 
 class DAO:
     @classmethod
@@ -8,4 +9,20 @@ class DAO:
         async with async_session_maker() as session:
             query = select(Tasks).where(Tasks.user_id==user_id)
             result = await session.execute(query)
-            return [Tasks.from_orm(user) for user in result]
+            tasks = result.scalars().all()
+            return [STask.from_orm(task) for task in tasks]
+    @classmethod
+    async def create_new_task(
+        cls,
+        user_id,
+        title: str,
+        description : str|None = None
+    ):
+        async with async_session_maker() as session:
+            query = insert(Tasks).values(
+                user_id = user_id,
+                title=title,
+                description=description
+            )
+            await session.execute(query)
+            await session.commit()

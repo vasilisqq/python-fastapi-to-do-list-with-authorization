@@ -76,9 +76,3 @@ def validate_tokens(request:Request, response: Response):
             print(e)
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="authirze again")
     
-        
-    
-        
-
-async def get_all_tasks(user_id: str = Depends(validate_tokens)):
-    return await DAO.get_all_tasks_from_user(user_id=int(user_id))
