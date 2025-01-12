@@ -1,5 +1,5 @@
 from database import async_session_maker
-from sqlalchemy import select, insert
+from sqlalchemy import select, insert, delete, and_
 from tasks.model import Tasks
 from tasks.schemas import STask
 
@@ -24,5 +24,12 @@ class DAO:
                 title=title,
                 description=description
             )
+            await session.execute(query)
+            await session.commit()
+    @classmethod
+    async def delete_task(cls, user_id: int, task_id: int):
+        async with async_session_maker() as session:
+            query = delete(Tasks).where(and_(
+                Tasks.user_id == user_id, Tasks.id == task_id))
             await session.execute(query)
             await session.commit()

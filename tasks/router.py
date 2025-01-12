@@ -24,3 +24,13 @@ async def create_new_task(
         title,
         description,
     )
+
+@router.delete("/me/delete")
+async def delete_task(
+    task_id: str,
+    user_id: str = Depends(validate_tokens)
+):
+    await DAO.delete_task(
+        int(user_id),
+        int(task_id)
+    )

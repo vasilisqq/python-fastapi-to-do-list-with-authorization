@@ -42,6 +42,8 @@ def create_refresh_token(data:dict):
 
 def validate_tokens(request:Request, response: Response):
     access = request.cookies.get("todo_at")
+    if not access:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="access token does not exist")
     try:
         payload = jwt.decode(token=access, 
                                 key=settings.SECRET_KEY.get_secret_value(), 
